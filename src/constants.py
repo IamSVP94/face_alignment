@@ -11,4 +11,4 @@ random.seed(SEED)  # unified seed
 
 AVAIL_GPUS = min(1, torch.cuda.device_count())
 num_workers = 15  # max 16 for my pc
-input_size = (48, 48)
+input_size = (62, 62)  # window_size

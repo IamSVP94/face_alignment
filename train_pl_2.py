@@ -17,7 +17,7 @@ def main(args):
     # PARAMS
     start_learning_rate = 1e-4
 
-    EXPERIMENT_NAME = 'FACIAL_LANDMARKS_48x48'
+    EXPERIMENT_NAME = 'FACIAL_LANDMARKS'
 
     logdir = BASE_DIR / f'logs/'
     logdir.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def main(args):
     # AUGMENTATIONS
     train_transforms = [
         A.Rotate([-15.0, 15.0], border_mode=cv2.BORDER_REPLICATE, p=0.8),
-        A.RandomCrop(width=48, height=48, p=0.3),
+        A.RandomCrop(width=62, height=62, p=0.3),
         A.RandomCropFromBorders(crop_left=0.2, crop_right=0.2, crop_top=0.2, crop_bottom=0.2, p=0.1),
         A.GaussNoise(var_limit=(10.0, 30.0), p=0.5),
         A.RandomBrightnessContrast(p=0.2),
@@ -67,6 +67,7 @@ def main(args):
     )
 
     weights = None  # start from checkpoint
+    # weights = '/home/iamsvp/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_3/checkpoints/epoch=29-val_loss=1040.9308.ckpt'  # start from checkpoint
     trainer.fit(model=model_pl, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=weights)
 
 

@@ -13,16 +13,16 @@ from src import read_pts
 from src.constants import input_size
 
 # DATASET PARAMS: (scalefactor=0.00392156862745098, RGB)
-# dataset_mean=[0.46515819699220795, 0.39155367530522783, 0.35058879452168296] (mean=0.40243355560637295)
-# dataset_std=[0.2667869035720346, 0.2450091688854225, 0.2371264524072626] (mean=0.2496408416215732)
-# SIZE PARAMS: (dataset_len=7875)
-# min_width=91    min_height=97   widths_mean=675.4233650793651   heights_mean=677.1892063492063
-# max_width=4211  max_height=5400 widths_median=435.0     heights_median=457.0
+# dataset_mean=[0.5632053267791609, 0.4360215688506197, 0.37790724830547495] (mean=0.4590447146450852)
+# dataset_std=[0.22373028391406174, 0.19938469717035187, 0.18913242211799638] (mean=0.20408246773413666)
+# SIZE PARAMS: (dataset_len=8776)
+# min_width=62    min_height=69   widths_mean=339.2739288969918   heights_mean=339.5
+# max_width=3242  max_height=3312 widths_median=215.0     heights_median=215.0
 final_transforms = [
     A.Resize(height=input_size[0], width=input_size[1], always_apply=True),
     A.Normalize(
-        mean=(0.35058879452168296, 0.39155367530522783, 0.46515819699220795),  # BGR
-        std=(0.2371264524072626, 0.2450091688854225, 0.2667869035720346),  # BGR
+        mean=(0.37790724830547495, 0.4360215688506197, 0.5632053267791609),  # BGR
+        std=(0.18913242211799638, 0.19938469717035187, 0.22373028391406174),  # BGR
         max_pixel_value=255.0,
         always_apply=True
     ),
@@ -31,13 +31,9 @@ final_transforms = [
 
 
 class CustomFaceDataset(Dataset):
-    def __init__(self,
-                 img_list: List[str],
-                 augmentation: Sequence[Union[BasicTransform, BaseCompose]] = None,
-                 input_size: Tuple[int, int] = (48, 48),
-                 ) -> None:
+    def __init__(self, img_list: List[str], augmentation: Sequence[Union[BasicTransform, BaseCompose]] = None) -> None:
         self.imgs = img_list
-        self.flandmarks = [read_pts(path.with_suffix('.pts')) for path in img_list]
+        self.flandmarks = [read_pts(path.with_suffix('.pts')) for path in img_list]  # OOM?
 
         if augmentation is None:
             augmentation = []
