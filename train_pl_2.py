@@ -17,9 +17,7 @@ def main(args):
     # PARAMS
     start_learning_rate = 1e-4
 
-    EXPERIMENT_NAME = 'FACIAL_LANDMARKS'
-    VERSION = '48x48'
-    weights = None
+    EXPERIMENT_NAME = 'FACIAL_LANDMARKS_48x48'
 
     logdir = BASE_DIR / f'logs/'
     logdir.mkdir(parents=True, exist_ok=True)
@@ -46,7 +44,7 @@ def main(args):
     val_loader = DataLoader(val, batch_size=1, shuffle=False, num_workers=num_workers, drop_last=False)
 
     # LOGGER
-    tb_logger = TensorBoardLogger(save_dir=logdir, name=EXPERIMENT_NAME, version=VERSION)
+    tb_logger = TensorBoardLogger(save_dir=logdir, name=EXPERIMENT_NAME)
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     best_metric_saver = ModelCheckpoint(
         mode='min', save_top_k=1, save_last=True, auto_insert_metric_name=False,
@@ -68,6 +66,7 @@ def main(args):
         callbacks=[lr_monitor, best_metric_saver],
     )
 
+    weights = None  # start from checkpoint
     trainer.fit(model=model_pl, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=weights)
 
 
