@@ -19,7 +19,8 @@ def main(args):
 
         annot_path = img_path.with_suffix('.pts')
         if annot_path.exists():
-            points = read_pts(annot_path)
+            points = np.array([[img.shape[1] * x, img.shape[0] * y] for x, y in read_pts(annot_path)])
+
             radius = max(1, img.shape[1] // 150)
             drawed = draw_points(img, [points], radius=radius, colors=colors)
             plt_show_img(drawed, mode=args.mode, title=f"{img_path.parent.name} with {len(points)} points")
@@ -29,7 +30,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--src_dir', type=str, help='', required=True, )
+    parser.add_argument('-s', '--src_dir', type=str, help='',
+                        # required=True,
+                        default='/home/vid/hdd/datasets/FACES/landmarks_task/300W/test_dataset/',
+                        )
     parser.add_argument('-m', '--mode', choices=['cv2', 'plt'], default='cv2', help='')
     args = parser.parse_args()
 
