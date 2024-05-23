@@ -15,7 +15,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 def main(args):
     # PARAMS
-    start_learning_rate = 1e-4
+    start_learning_rate = 1e-3
 
     EXPERIMENT_NAME = 'FACIAL_LANDMARKS'
 
@@ -25,7 +25,7 @@ def main(args):
     # AUGMENTATIONS
     train_transforms = [
         A.Rotate([-15.0, 15.0], border_mode=cv2.BORDER_REPLICATE, p=0.8),
-        A.RandomCrop(width=62, height=62, p=0.3),
+        A.RandomCrop(width=48, height=48, p=0.3),
         A.RandomCropFromBorders(crop_left=0.2, crop_right=0.2, crop_top=0.2, crop_bottom=0.2, p=0.1),
         A.GaussNoise(var_limit=(10.0, 30.0), p=0.5),
         A.RandomBrightnessContrast(p=0.2),
@@ -47,16 +47,16 @@ def main(args):
     tb_logger = TensorBoardLogger(save_dir=logdir, name=EXPERIMENT_NAME)
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     best_metric_saver = ModelCheckpoint(
-        mode='min', save_top_k=1, save_last=True, auto_insert_metric_name=False,
-        monitor='loss/validation',
-        filename='epoch={epoch:02d}-val_loss={loss/validation:.4f}',
+        mode='min', save_top_k=1, save_last=True, monitor='loss/validation',
+        auto_insert_metric_name=False, filename='epoch={epoch:02d}-val_loss={loss/validation:.4f}',
     )
 
     # MODEL
     model_pl = FacesLandmarks_pl(
         model=ONet(),  # model from paper
         loss_fn=EuclideanLoss(),  # sum mse each point loss
-        start_learning_rate=start_learning_rate
+        start_learning_rate=start_learning_rate,
+        max_epochs=args.epochs
     )
 
     # TRAIN
@@ -67,7 +67,6 @@ def main(args):
     )
 
     weights = None  # start from checkpoint
-    # weights = '/home/iamsvp/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_3/checkpoints/epoch=29-val_loss=1040.9308.ckpt'  # start from checkpoint
     trainer.fit(model=model_pl, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=weights)
 
 
@@ -76,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--train_dir', type=str, required=True, help='')
     parser.add_argument('-v', '--val_dir', type=str, required=True, help='', )
     parser.add_argument('--epochs', type=int, default=100, help='', )
-    parser.add_argument('--batch_size', type=int, default=512, help='', )
+    parser.add_argument('--batch_size', type=int, default=2048, help='', )
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
     args = parser.parse_args()
 

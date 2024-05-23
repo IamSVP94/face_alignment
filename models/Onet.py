@@ -42,11 +42,14 @@ class ONet(nn.Module):
         )
 
         self.fc = nn.Sequential(
-            nn.Linear(3 * 3 * 128, 256),
+            nn.Linear(4 * 4 * 128, 256),
             nn.LeakyReLU(),
         )
 
-        self.output = nn.Linear(256, 2 * num_points)  # we need [x,y]*68 facial landmark localization only
+        self.output = nn.Sequential(
+            nn.Linear(256, 2 * num_points),  # we need [x,y]*68 facial landmark localization only
+            nn.Sigmoid(),
+        )
 
     def forward(self, x):
         out = self.conv1(x)
@@ -61,6 +64,6 @@ class ONet(nn.Module):
 
 if __name__ == '__main__':  # testing
     model = ONet()
-    x = torch.rand((2, 3, 48, 48))
+    x = torch.rand((2, 3, 62, 62))
     out = model(x)
     print(x.shape, out.shape)
