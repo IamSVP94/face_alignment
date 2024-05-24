@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import torch
 from pathlib import Path
 import albumentations as A
@@ -9,7 +10,7 @@ from warmup_scheduler import GradualWarmupScheduler
 from albumentations import BasicTransform, BaseCompose
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
-from src import read_pts
+from src import read_pts, draw_points
 from src.constants import input_size
 
 # DATASET PARAMS: (scalefactor=0.00392156862745098, RGB)
@@ -57,6 +58,13 @@ class CustomFaceDataset(Dataset):
         gt_t = torch.Tensor(gt_t).to(torch.float64).reshape(-1)  # flatten
         return img, gt_t
 
+    @staticmethod
+    def draw(img_t, pred_t, radius=1):
+        img = img_t[0].detach().cpu().numpy().transpose(1, 2, 0)
+        img = np.interp(img, (img.min(), img.max()), (0, 255))
+        points = pred_t[0].detach().cpu().numpy().reshape((-1, 2))
+        return draw_points(img, [points], radius=radius)
+
 
 class FacesLandmarks_pl(pl.LightningModule):
     def __init__(self, model, max_epochs=None, *args, loss_fn=torch.nn.CrossEntropyLoss(),
@@ -78,7 +86,7 @@ class FacesLandmarks_pl(pl.LightningModule):
         optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=self.start_learning_rate,
-            weight_decay=5e-2,
+            # weight_decay=5e-2,
         )
 
         warmup_epochs = 5

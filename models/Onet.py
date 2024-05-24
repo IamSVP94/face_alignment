@@ -17,37 +17,43 @@ class ONet(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=(3, 3), padding=1),
             nn.BatchNorm2d(num_features=32),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(3, 3), stride=2),
+            nn.Dropout(0.2, inplace=True),
         )
 
         self.conv2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=(3, 3), padding=0),
             nn.BatchNorm2d(num_features=64),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(3, 3), stride=2),
+            nn.Dropout(0.2, inplace=True),
         )
 
         self.conv3 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=(3, 3), padding=0),
             nn.BatchNorm2d(num_features=64),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(2, 2), stride=2),
+            nn.Dropout(0.2, inplace=True),
         )
 
         self.conv4 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=(2, 2), padding=0),
             nn.BatchNorm2d(num_features=128),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
         )
 
         self.fc = nn.Sequential(
-            nn.Linear(4 * 4 * 128, 256),
-            nn.LeakyReLU(),
+            nn.Linear(4 * 4 * 128, 1024),
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(0.1, inplace=True),
         )
 
         self.output = nn.Sequential(
-            nn.Linear(256, 2 * num_points),  # we need [x,y]*68 facial landmark localization only
+            nn.BatchNorm1d(1024),
+            nn.Linear(1024, 2 * num_points),  # we need [x,y]*68 facial landmark localization only
             nn.Sigmoid(),
         )
 

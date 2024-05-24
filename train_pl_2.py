@@ -2,11 +2,12 @@ import cv2
 import argparse
 from pathlib import Path
 import albumentations as A
+import torch
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src import glob_search
+from src import glob_search, plt_show_img
 from models.Onet import ONet, EuclideanLoss
 from src.constants import BASE_DIR, num_workers, AVAIL_GPUS
 from src.utils_pl import FacesLandmarks_pl, CustomFaceDataset
@@ -24,13 +25,12 @@ def main(args):
 
     # AUGMENTATIONS
     train_transforms = [
-        A.Rotate([-15.0, 15.0], border_mode=cv2.BORDER_REPLICATE, p=0.8),
-        A.RandomCrop(width=48, height=48, p=0.3),
-        A.RandomCropFromBorders(crop_left=0.2, crop_right=0.2, crop_top=0.2, crop_bottom=0.2, p=0.1),
-        A.GaussNoise(var_limit=(10.0, 30.0), p=0.5),
+        A.Rotate([-30.0, 30.0], border_mode=cv2.BORDER_REPLICATE, p=0.8),
+        A.RandomCropFromBorders(crop_left=0.05, crop_right=0.05, crop_top=0.05, crop_bottom=0.01, p=0.1),
+        A.GaussNoise(var_limit=(10.0, 75.0), p=0.5),
         A.RandomBrightnessContrast(p=0.2),
         A.ToGray(p=0.3),
-        A.PixelDropout(p=0.2),
+        A.PixelDropout(dropout_prob=0.025, drop_value=None, p=0.2),
     ]
 
     train_imgs = glob_search(args.train_dir)
@@ -43,6 +43,11 @@ def main(args):
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True, num_workers=num_workers, drop_last=False)
     val_loader = DataLoader(val, batch_size=1, shuffle=False, num_workers=num_workers, drop_last=False)
 
+    # for idx, (img, gt_t) in enumerate(train_loader):  # for check augments
+    #     if idx > 1:
+    #         exit()
+    #     plt_show_img(CustomFaceDataset.draw(img, gt_t))
+
     # LOGGER
     tb_logger = TensorBoardLogger(save_dir=logdir, name=EXPERIMENT_NAME)
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
@@ -54,7 +59,8 @@ def main(args):
     # MODEL
     model_pl = FacesLandmarks_pl(
         model=ONet(),  # model from paper
-        loss_fn=EuclideanLoss(),  # sum mse each point loss
+        # loss_fn=EuclideanLoss(),  # sum mse each point loss
+        loss_fn=torch.nn.MSELoss(),
         start_learning_rate=start_learning_rate,
         max_epochs=args.epochs
     )
@@ -72,10 +78,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--train_dir', type=str, required=True, help='')
-    parser.add_argument('-v', '--val_dir', type=str, required=True, help='', )
+    parser.add_argument('-t', '--train_dir', type=str,
+                        # required=True,
+                        default='/home/vid/hdd/datasets/FACES/landmarks_task/torch_abs/train/',
+                        help='')
+    parser.add_argument('-v', '--val_dir', type=str,
+                        # required=True,
+                        default='/home/vid/hdd/datasets/FACES/landmarks_task/torch_abs/test/',
+                        help='', )
     parser.add_argument('--epochs', type=int, default=100, help='', )
-    parser.add_argument('--batch_size', type=int, default=2048, help='', )
+    parser.add_argument('--batch_size', type=int, default=512, help='', )
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
     args = parser.parse_args()
 
