@@ -106,8 +106,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--src_dir', type=str,
                         # required=True,
-                        # default='/home/vid/hdd/datasets/FACES/landmarks_task/torch/test/300W/',
-                        default='/home/vid/hdd/datasets/FACES/landmarks_task/300W/test/',
+                        default='/home/vid/hdd/datasets/FACES/landmarks_task/Menpo/test/',
                         help='')
     parser.add_argument('-d', '--dst_dir', type=str, default=None, help='')
     parser.add_argument('--scale', type=float, default=1.0, help='')

@@ -86,11 +86,11 @@ def main(args):
                     gt = np.array(gt) - np.array([xmin, ymin])
                     # plt_show_img(draw_points(crop, [gt]), title=f"{crop.shape}", mode='plt')
 
-                    rel_gt = gt / (xmax - xmin, ymax - ymin)  # relatives points for saving
+                    # rel_gt = gt / (xmax - xmin, ymax - ymin)  # relatives points for saving
 
                     # saving
                     np.savetxt(
-                        str(annot_path), rel_gt, newline="\n", fmt='%1.6f',
+                        str(annot_path), gt, newline="\n", fmt='%1.6f',
                         comments="", header="version: 2\nn_points: 68\n{", footer="}",
                     )
                     cv2.imwrite(str(crop_path), crop)

@@ -23,7 +23,6 @@ mpl.rcParams['figure.subplot.right'] = 1 - mpl.rcParams['figure.subplot.left']
 # Inner lip [60, 67]
 
 
-
 def glob_search(directories: Union[str, Path, List[str], List[Path]],
                 pattern: str = '**/*',
                 formats: Union[List[str], Tuple[str], str] = ('png', 'jpg', 'jpeg'),
@@ -130,7 +129,6 @@ def plt_show_img(img,
 
 def read_pts(path):
     return np.loadtxt(path, comments=("version:", "n_points:", "{", "}"))
-
 
 
 def draw_points(image, points_list, colors=None, radius=2):

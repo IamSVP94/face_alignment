@@ -4,20 +4,30 @@ import cv2
 import dlib
 import numpy as np
 import torch
-from tqdm import tqdm
 from pathlib import Path
 import albumentations as A
-from src import glob_search, plt_show_img, read_pts, draw_points
-from models.Onet import ONet
+from src import glob_search, read_pts
+from models.Onet import ResNet18
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
-from src.constants import AVAIL_GPUS
-from src.utils_pl import final_transforms
+from src.constants import AVAIL_GPUS, input_size
+from src.utils_pl import DATASET_MEAN, DATASET_STD
+
+final_transforms = A.Compose([
+    A.Resize(height=input_size[0], width=input_size[1], always_apply=True),
+    A.Normalize(
+        mean=DATASET_MEAN,  # BGR
+        std=DATASET_STD,  # BGR
+        max_pixel_value=255.0,
+        always_apply=True
+    ),
+    ToTensor(always_apply=True),
+])
 
 
 def main(args):
     # load model
-    model = ONet()
+    model = ResNet18(fine_tune=False)
     state_dict = torch.load(str(args.checkpoint_pl))['state_dict']
     remove_prefix = 'model.'
     state_dict = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in state_dict.items()}
@@ -61,8 +71,7 @@ def main(args):
                         ymax = min(ymax + (ymax - ymin) * (args.scale - 1), img.shape[0])
 
                         orig_crop = img[int(ymin):int(ymax), int(xmin):int(xmax)]
-                        transforms = A.Compose(final_transforms)
-                        crop_t = transforms(image=orig_crop)['image'].unsqueeze(0).to(args.device)
+                        crop_t = final_transforms(image=orig_crop)['image'].unsqueeze(0).to(args.device)
 
                         orig_crop_h, orig_crop_w = orig_crop.shape[:2]
                         crop_t_h, crop_t_w = crop_t.shape[2:]
@@ -90,8 +99,14 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--src_dir', type=str, required=True, help='')
-    parser.add_argument('-c', '--checkpoint_pl', type=str, required=True, help='')
+    parser.add_argument('-s', '--src_dir', type=str,
+                        # required=True,
+                        default='/home/vid/hdd/datasets/FACES/landmarks_task/300W/test/',
+                        help='')
+    parser.add_argument('-c', '--checkpoint_pl', type=str,
+                        # required=True,
+                        default='/home/vid/hdd/projects/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_47/checkpoints/epoch=98-val_loss=2.2104.ckpt',
+                        help='')
     parser.add_argument('-d', '--dst_dir', type=str, default=None, help='')
     parser.add_argument('--scale', type=float, default=1.0, help='')
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
