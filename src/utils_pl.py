@@ -4,6 +4,7 @@ import torch
 from pathlib import Path
 import albumentations as A
 import pytorch_lightning as pl
+import torchlm
 from torch.utils.data import Dataset
 from typing import List, Tuple, Union, Sequence
 from warmup_scheduler import GradualWarmupScheduler
@@ -13,12 +14,21 @@ from albumentations.pytorch import ToTensorV2 as ToTensor
 from src import read_pts, draw_points
 from src.constants import input_size
 
+# torchlm.set_transforms_debug(True)
+# torchlm.set_transforms_logging(True)
+# torchlm.set_autodtype_logging(True)
+
 # DATASET PARAMS: (scalefactor=0.00392156862745098, RGB)
-# dataset_mean=[0.5632053267791609, 0.4360215688506197, 0.37790724830547495] (mean=0.4590447146450852)
-# dataset_std=[0.22373028391406174, 0.19938469717035187, 0.18913242211799638] (mean=0.20408246773413666)
+# dataset_mean=[0.5632053267791614, 0.43602156885061955, 0.37790724830547534] (mean=0.4590447146450854)
+# dataset_std=[0.2237302839140605, 0.19938469717035237, 0.189132422117997] (mean=0.20408246773413663)
 # SIZE PARAMS: (dataset_len=8776)
 # min_width=62    min_height=69   widths_mean=339.2739288969918   heights_mean=339.5
 # max_width=3242  max_height=3312 widths_median=215.0     heights_median=215.0
+
+DATASET_MEAN = [0.37790724830547495, 0.4360215688506197, 0.5632053267791609]  # BGR
+DATASET_STD = [0.18913242211799638, 0.19938469717035187, 0.22373028391406174]  # BGR
+
+''' ALBUMENTATION
 final_transforms = [
     A.Resize(height=input_size[0], width=input_size[1], always_apply=True),
     A.Normalize(
@@ -29,21 +39,24 @@ final_transforms = [
     ),
     ToTensor(always_apply=True),
 ]
+# '''
+
+final_transforms = [
+    torchlm.LandmarksResize(size=input_size),
+    torchlm.LandmarksNormalize(mean=DATASET_MEAN, std=DATASET_STD, force_norm_before_mean_std=True),
+    torchlm.LandmarksToTensor(),
+]
 
 
 class CustomFaceDataset(Dataset):
-    def __init__(self, img_list: List[str], augmentation: Sequence[Union[BasicTransform, BaseCompose]] = None) -> None:
+    def __init__(self, img_list: List[str], augmentation=None) -> None:
         self.imgs = img_list
         self.flandmarks = [read_pts(path.with_suffix('.pts')) for path in img_list]  # OOM?
 
         if augmentation is None:
             augmentation = []
         augmentation.extend(final_transforms)
-
-        self.augmentation = A.Compose(
-            augmentation,
-            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
-        )
+        self.augmentation = torchlm.LandmarksCompose(augmentation)
 
     def __len__(self) -> int:
         return len(self.imgs)
@@ -52,17 +65,20 @@ class CustomFaceDataset(Dataset):
         img_path = self.imgs[item]
         img = cv2.imread(str(img_path))  # BGR
         gt_np = self.flandmarks[item]
+
         # apply augmentations
-        with_augs = self.augmentation(image=img, keypoints=gt_np)
-        img, gt_t = with_augs['image'], with_augs['keypoints']
-        gt_t = torch.Tensor(gt_t).to(torch.float64).reshape(-1)  # flatten
+        img, gt_t = self.augmentation(img, gt_np)
+        gt_t = torch.Tensor(gt_t).reshape(-1)  # flatten
         return img, gt_t
 
     @staticmethod
     def draw(img_t, pred_t, radius=1):
-        img = img_t[0].detach().cpu().numpy().transpose(1, 2, 0)
-        img = np.interp(img, (img.min(), img.max()), (0, 255))
-        points = pred_t[0].detach().cpu().numpy().reshape((-1, 2))
+        transform = torchlm.LandmarksCompose([
+            torchlm.LandmarksToNumpy(),
+            torchlm.LandmarksUnNormalize(mean=DATASET_MEAN, std=DATASET_STD, force_denorm_after_mean_std=True),
+        ])
+        img, pred = transform(img_t[0], pred_t[0])
+        points = pred.reshape(-1, 2)
         return draw_points(img, [points], radius=radius)
 
 
@@ -131,7 +147,7 @@ class FacesLandmarks_pl(pl.LightningModule):
 
     def _shared_step(self, batch, stage):
         imgs, labels = batch
-        gts = labels.squeeze(1).to(torch.long)
+        gts = labels.squeeze(1)
         preds = self.forward(imgs)
         loss = self.loss_fn(preds, gts)
         self.log(f'loss/{stage}', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
