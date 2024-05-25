@@ -3,15 +3,22 @@ import argparse
 from pathlib import Path
 import albumentations as A
 import torch
+import torchlm
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src import glob_search, plt_show_img
-from models.Onet import ONet, EuclideanLoss
+from models.Onet import ONet, ResNet18, EuclideanLoss
+from torchlm.models import pipnet
 from src.constants import BASE_DIR, num_workers, AVAIL_GPUS
 from src.utils_pl import FacesLandmarks_pl, CustomFaceDataset
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+
+
+# torchlm.set_transforms_debug(True)
+# torchlm.set_transforms_logging(True)
+# torchlm.set_autodtype_logging(True)
 
 
 def main(args):
@@ -23,15 +30,23 @@ def main(args):
     logdir = BASE_DIR / f'logs/'
     logdir.mkdir(parents=True, exist_ok=True)
 
-    # AUGMENTATIONS
+    # ''' TORCHLM
     train_transforms = [
-        A.Rotate([-30.0, 30.0], border_mode=cv2.BORDER_REPLICATE, p=0.8),
-        A.RandomCropFromBorders(crop_left=0.05, crop_right=0.05, crop_top=0.05, crop_bottom=0.01, p=0.1),
-        A.GaussNoise(var_limit=(10.0, 75.0), p=0.5),
-        A.RandomBrightnessContrast(p=0.2),
-        A.ToGray(p=0.3),
-        A.PixelDropout(dropout_prob=0.025, drop_value=None, p=0.2),
+        torchlm.LandmarksRandomHSV(prob=0.5),
+        torchlm.LandmarksRandomShear(shear_factor=0.5, prob=0.2),
+        torchlm.LandmarksRandomPatches(prob=0.15),
+        torchlm.LandmarksRandomPatchesMixUp(prob=0.15),
+        torchlm.LandmarksRandomBackground(prob=0.2),
+        torchlm.LandmarksRandomBackgroundMixUp(alpha=0.4, prob=0.1),
+
+        torchlm.LandmarksRandomMask(prob=0.05),
+        torchlm.LandmarksRandomMaskMixUp(prob=0.1),
+        torchlm.LandmarksRandomBlur(kernel_range=(5, 25), prob=0.1),
+        torchlm.LandmarksRandomBrightness(prob=0.25),
+        torchlm.bind(A.ToGray(always_apply=True), prob=0.25),
+        torchlm.LandmarksRandomRotate(40, bins=8, prob=0.25),
     ]
+    # '''
 
     train_imgs = glob_search(args.train_dir)
     val_imgs = glob_search(args.val_dir)
@@ -41,10 +56,10 @@ def main(args):
     val = CustomFaceDataset(img_list=val_imgs)
 
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True, num_workers=num_workers, drop_last=False)
-    val_loader = DataLoader(val, batch_size=1, shuffle=False, num_workers=num_workers, drop_last=False)
+    val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False, num_workers=num_workers, drop_last=False)
 
     # for idx, (img, gt_t) in enumerate(train_loader):  # for check augments
-    #     if idx > 1:
+    #     if idx > 3:
     #         exit()
     #     plt_show_img(CustomFaceDataset.draw(img, gt_t))
 
@@ -58,8 +73,9 @@ def main(args):
 
     # MODEL
     model_pl = FacesLandmarks_pl(
-        model=ONet(),  # model from paper
-        # loss_fn=EuclideanLoss(),  # sum mse each point loss
+        model=ResNet18(
+            pretrained_weights='/home/vid/hdd/projects/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_42/checkpoints/epoch=78-val_loss=121602.7500.ckpt'),
+        # model from paper
         loss_fn=torch.nn.MSELoss(),
         start_learning_rate=start_learning_rate,
         max_epochs=args.epochs
