@@ -39,10 +39,13 @@ python3 train_pl_2.py --train_dir=train_dir/ --val_dir=val_dir/ --epochs=100 --b
 tensorboard --logdir=logs
 ```
 
-4. Далее требуется сформировать датасет из предсказаний на обученной сетке.
+4. Далее требуется сформировать датасет из предсказаний на обученной сетке и с помощью dlib.
 
 ```bash
-python3 pred_pl_3.py  --src_dir=300W/test/ --checkpoint_pl=checkpoint.ckpt
+python3 pred_pl_3.py  --src_dir=Menpo/test/ --checkpoint_pl=checkpoint.ckpt
+```
+```bash
+python3 dlib_pred_3.5.py -s Menpo/test/ -m shape_predictor_68_face_landmarks.dat
 ```
 
 , где `300W/test/` - папка с test изображениями, `checkpoint.ckpt` - чекпоинт обученной модели в `pytorch_lightning`
@@ -50,5 +53,5 @@ python3 pred_pl_3.py  --src_dir=300W/test/ --checkpoint_pl=checkpoint.ckpt
 5. Далее следует запустить скрипт расчета и отображения метрики CED
 
 ```bash
-python3 count_ced_for_points_4.py --gt_path=300W/test/ --predictions_path=300W/test_preds/ --output_path=300W/test.png
+python3 count_ced_for_points_4.py --gt_path=Menpo/test/ --predictions_path=Menpo/test_preds/ --dlib_path=Menpo/test_dlib/ --output_path=Menpo/Menpo.png
 ```

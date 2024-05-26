@@ -15,9 +15,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 def main(args):
     # PARAMS
-    start_learning_rate = 1e-5
-
-    EXPERIMENT_NAME = 'FACIAL_LANDMARKS'
+    EXPERIMENT_NAME = f'FACIAL_LANDMARKS_{args.model_type}'
 
     logdir = BASE_DIR / f'logs/'
     logdir.mkdir(parents=True, exist_ok=True)
@@ -67,11 +65,11 @@ def main(args):
     )
 
     # MODEL
+    model = ResNet18(pretrained_weights=args.pretrained) if args.model_type == 'resnet' else ONet()
     model_pl = FacesLandmarks_pl(
-        model=ResNet18(
-            pretrained_weights=args.pretrained),
+        model=model,
         loss_fn=torch.nn.MSELoss(),
-        start_learning_rate=start_learning_rate,
+        start_learning_rate=args.start_learning_rate,
         max_epochs=args.epochs
     )
 
@@ -90,9 +88,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--train_dir', type=str, required=True, help='')
     parser.add_argument('-v', '--val_dir', type=str, required=True, help='')
+    parser.add_argument('-m', '--model_type', choices=['resnet', 'onet'], default='resnet', help='')
     parser.add_argument('-p', '--pretrained', type=str, default=None, help='')
-    parser.add_argument('--epochs', type=int, default=100, help='', )
-    parser.add_argument('--batch_size', type=int, default=512, help='', )
+    parser.add_argument('--epochs', type=int, default=100, help='')
+    parser.add_argument('--batch_size', type=int, default=512, help='')
+    parser.add_argument('--start_learning_rate', type=float, default=0.001, help='')
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
     args = parser.parse_args()
 
