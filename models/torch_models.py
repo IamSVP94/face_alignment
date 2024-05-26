@@ -72,47 +72,25 @@ class ONet(nn.Module):
 
 
 class ResNet18(nn.Module):
-    """
-        Parameters
-        ----------
-        pretrained_weights : bool, default = "True"
-            Ways of weights initialization.
-            If "False", it means random initialization and no pretrained weights,
-            If "True" it means resnet34 pretrained weights are used.
-
-        fine_tune: bool, default = "False"
-            Allows to choose between two types of transfer learning: fine tuning and feature extraction.
-            For more details of the description of each mode,
-            read https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
-
-        embedding_size: int, default = 128
-            Size of the embedding of the last layer
-
-    """
-
     def __init__(self, pretrained_weights=None, fine_tune=True, num_points=68):
         super(ResNet18, self).__init__()
         self.pretrained_weights = pretrained_weights
         self.fine_tune = fine_tune
 
-        if self.pretrained_weights:
-            if Path(self.pretrained_weights).exists():
-                state_dict = torch.load(str(self.pretrained_weights))['state_dict']
-                remove_prefix = 'model.'
-                state_dict = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in
-                              state_dict.items()}
-                pretrained_model = torchvision.models.resnet18(weights=state_dict)
-            else:
-                pretrained_model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-        else:
-            pretrained_model = torchvision.models.resnet18(weights=None)
-
+        pretrained_model = torchvision.models.resnet18()
         if not self.fine_tune:
             for param in pretrained_model.parameters():
                 param.requires_grad = False
 
         pretrained_model.fc = torch.nn.Linear(pretrained_model.fc.in_features, num_points * 2)
         pretrained_model = pretrained_model.type(torch.FloatTensor)
+
+        if self.pretrained_weights and Path(self.pretrained_weights).exists():
+            state_dict = torch.load(str(self.pretrained_weights))['state_dict']
+            remove_prefix = 'model.model.'
+            w = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in state_dict.items()}
+            pretrained_model.load_state_dict(w)
+
         self.model = pretrained_model
 
     def forward(self, x):

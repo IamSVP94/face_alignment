@@ -7,7 +7,7 @@ import torch
 from pathlib import Path
 import albumentations as A
 from src import glob_search, read_pts
-from models.Onet import ResNet18
+from models.torch_models import ResNet18, ONet
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
 from src.constants import AVAIL_GPUS, input_size
@@ -27,7 +27,7 @@ final_transforms = A.Compose([
 
 def main(args):
     # load model
-    model = ResNet18(fine_tune=False)
+    model = ResNet18(fine_tune=False) if args.model_type == 'resnet' else ONet()
     state_dict = torch.load(str(args.checkpoint_pl))['state_dict']
     remove_prefix = 'model.'
     state_dict = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in state_dict.items()}
@@ -99,15 +99,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--src_dir', type=str,
-                        # required=True,
-                        default='/home/vid/hdd/datasets/FACES/landmarks_task/300W/test/',
-                        help='')
-    parser.add_argument('-c', '--checkpoint_pl', type=str,
-                        # required=True,
-                        default='/home/vid/hdd/projects/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_47/checkpoints/epoch=98-val_loss=2.2104.ckpt',
-                        help='')
+    parser.add_argument('-s', '--src_dir', type=str, required=True, help='')
     parser.add_argument('-d', '--dst_dir', type=str, default=None, help='')
+    parser.add_argument('-c', '--checkpoint_pl', type=str, required=True, help='')
+    parser.add_argument('--model_type', choices=['resnet', 'onet'], default='resnet', help='')
     parser.add_argument('--scale', type=float, default=1.0, help='')
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
     args = parser.parse_args()

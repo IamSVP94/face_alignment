@@ -1,29 +1,21 @@
-import cv2
+import torch
+import torchlm
 import argparse
 from pathlib import Path
 import albumentations as A
-import torch
-import torchlm
+from src import glob_search
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
+from models.torch_models import ONet, ResNet18
 from pytorch_lightning.loggers import TensorBoardLogger
-
-from src import glob_search, plt_show_img
-from models.Onet import ONet, ResNet18, EuclideanLoss
-from torchlm.models import pipnet
 from src.constants import BASE_DIR, num_workers, AVAIL_GPUS
 from src.utils_pl import FacesLandmarks_pl, CustomFaceDataset
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 
-# torchlm.set_transforms_debug(True)
-# torchlm.set_transforms_logging(True)
-# torchlm.set_autodtype_logging(True)
-
-
 def main(args):
     # PARAMS
-    start_learning_rate = 1e-3
+    start_learning_rate = 1e-5
 
     EXPERIMENT_NAME = 'FACIAL_LANDMARKS'
 
@@ -58,10 +50,13 @@ def main(args):
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True, num_workers=num_workers, drop_last=False)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False, num_workers=num_workers, drop_last=False)
 
-    # for idx, (img, gt_t) in enumerate(train_loader):  # for check augments
-    #     if idx > 3:
-    #         exit()
-    #     plt_show_img(CustomFaceDataset.draw(img, gt_t))
+    ''' for checking augmentations
+    print(68, train.augmentation)
+    for idx, (img, gt_t) in enumerate(train_loader):
+        if idx > 3:
+            exit()
+        plt_show_img(CustomFaceDataset.draw(img, gt_t), mode='cv2')
+    # '''
 
     # LOGGER
     tb_logger = TensorBoardLogger(save_dir=logdir, name=EXPERIMENT_NAME)
@@ -74,8 +69,7 @@ def main(args):
     # MODEL
     model_pl = FacesLandmarks_pl(
         model=ResNet18(
-            pretrained_weights='/home/vid/hdd/projects/PycharmProjects/face_alignment/logs/FACIAL_LANDMARKS/version_42/checkpoints/epoch=78-val_loss=121602.7500.ckpt'),
-        # model from paper
+            pretrained_weights=args.pretrained),
         loss_fn=torch.nn.MSELoss(),
         start_learning_rate=start_learning_rate,
         max_epochs=args.epochs
@@ -94,14 +88,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--train_dir', type=str,
-                        # required=True,
-                        default='/home/vid/hdd/datasets/FACES/landmarks_task/torch_abs/train/',
-                        help='')
-    parser.add_argument('-v', '--val_dir', type=str,
-                        # required=True,
-                        default='/home/vid/hdd/datasets/FACES/landmarks_task/torch_abs/test/',
-                        help='', )
+    parser.add_argument('-t', '--train_dir', type=str, required=True, help='')
+    parser.add_argument('-v', '--val_dir', type=str, required=True, help='')
+    parser.add_argument('-p', '--pretrained', type=str, default=None, help='')
     parser.add_argument('--epochs', type=int, default=100, help='', )
     parser.add_argument('--batch_size', type=int, default=512, help='', )
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='')
@@ -112,6 +101,10 @@ if __name__ == '__main__':
 
     args.val_dir = Path(args.val_dir).resolve()
     assert args.val_dir.exists()
+
+    if args.pretrained is not None:
+        args.pretrained = Path(args.pretrained).resolve()
+        assert args.pretrained.exists()
 
     if AVAIL_GPUS == 0:
         args.device = 'cpu'

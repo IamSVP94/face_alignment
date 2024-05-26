@@ -52,7 +52,7 @@ def letterbox(frame, new_shape, color=(0, 0, 0)):
 
 def main(args):
     detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor(f'models/dlib/shape_predictor_68_face_landmarks.dat')
+    predictor = dlib.shape_predictor(str(args.dlib_model))
 
     imgs_bar = glob_search(args.src_dir, return_pbar=True)
     for img_idx, img_path in enumerate(imgs_bar):
@@ -104,16 +104,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--src_dir', type=str,
-                        # required=True,
-                        default='/home/vid/hdd/datasets/FACES/landmarks_task/Menpo/test/',
-                        help='')
+    parser.add_argument('-s', '--src_dir', type=str, required=True, help='')
     parser.add_argument('-d', '--dst_dir', type=str, default=None, help='')
+    parser.add_argument('-m', '--dlib_model', type=str, default=None, help='')
     parser.add_argument('--scale', type=float, default=1.0, help='')
     args = parser.parse_args()
 
     args.src_dir = Path(args.src_dir).resolve()
     assert args.src_dir.exists()
+    args.dlib_model = Path(args.dlib_model).resolve()
+    assert args.dlib_model.exists()
 
     args.dst_dir = Path(
         args.dst_dir).resolve() if args.dst_dir else args.src_dir.parent / f'{args.src_dir.name}_dlib'
