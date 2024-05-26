@@ -28,7 +28,6 @@ python3 show_drawed_points.py --src_dir=test/
 ```bash
 python3 train_pl_2.py --train_dir=train_dir/ --val_dir=val_dir/ --epochs=100 --batch_size=512 --device=cuda
 ```
-
 , где - `train_dir/` - общая папка с `300W/train/` `Menpo/train/`, `val_dir/` - общая папка с `300W/test/` `Menpo/test/`
 и
 настройки гиперпараметров обучения.
@@ -44,11 +43,12 @@ tensorboard --logdir=logs
 ```bash
 python3 pred_pl_3.py  --src_dir=Menpo/test/ --checkpoint_pl=checkpoint.ckpt
 ```
+, где `Menpo/test/` - папка с test изображениями, `checkpoint.ckpt` - чекпоинт обученной модели в `pytorch_lightning`
+
 ```bash
 python3 dlib_pred_3.5.py -s Menpo/test/ -m shape_predictor_68_face_landmarks.dat
 ```
-
-, где `300W/test/` - папка с test изображениями, `checkpoint.ckpt` - чекпоинт обученной модели в `pytorch_lightning`
+, где `Menpo/test/` - папка с test изображениями, `shape_predictor_68_face_landmarks.dat` - веса dlib.
 
 5. Далее следует запустить скрипт расчета и отображения метрики CED
 
