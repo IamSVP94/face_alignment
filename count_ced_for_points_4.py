@@ -110,6 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description='CED computation script', add_help=True)
     parser.add_argument('--gt_path', action='store', type=str, help='')
     parser.add_argument('--predictions_path', action='append', type=str, help='')
+    parser.add_argument('--dlib_path', action='append', type=str, help='')
     parser.add_argument('--output_path', action='store', type=str, help='')
     parser.add_argument('--normalization_type', choices=['bbox', 'eyes'], default='bbox', type=str, help='')
     parser.add_argument('--left_eye_idx', action='store', type=str, help='')
@@ -122,27 +123,32 @@ def main():
     predicted_points = {}
     for pred_path in args.predictions_path:
         predicted_points[os.path.basename(pred_path)] = read_points(pred_path, args.max_points_to_read)
+    dlib_points = {}
+    for dlib_path in args.dlib_path:
+        dlib_points[os.path.basename(dlib_path)] = read_points(dlib_path, args.max_points_to_read)
     gt_points = read_points(args.gt_path, args.max_points_to_read)
 
-    ceds = count_ced(predicted_points, gt_points, args)
+    predicted_ceds = count_ced(predicted_points, gt_points, args)
+    dlib_ceds = count_ced(dlib_points, gt_points, args)
 
     # saving figure
     line_styles = [':', '-.', '--', '-']
     plt.figure(figsize=(30, 20), dpi=100)
-    for method_idx, method_name in enumerate(ceds.keys()):
-        print('Plotting graph for the method {}'.format(method_name))
-        err = ceds[method_name]
-        proportion = np.arange(err.shape[0], dtype=np.float32) / err.shape[0]
-        under_thr = err > args.error_thr
-        last_idx = len(err)
-        if len(np.flatnonzero(under_thr)) > 0:
-            last_idx = np.flatnonzero(under_thr)[0]
-        under_thr_range = range(last_idx)
-        cur_auc = count_ced_auc(err)[0]
+    for ceds, method in zip([predicted_ceds, dlib_ceds], ["Predicted", "Dlib"]):
+        for method_idx, method_name in enumerate(ceds.keys()):
+            print('Plotting graph for the method {}'.format(method))
+            err = ceds[method_name]
+            proportion = np.arange(err.shape[0], dtype=np.float32) / err.shape[0]
+            under_thr = err > args.error_thr
+            last_idx = len(err)
+            if len(np.flatnonzero(under_thr)) > 0:
+                last_idx = np.flatnonzero(under_thr)[0]
+            under_thr_range = range(last_idx)
+            cur_auc = count_ced_auc(err)[0]
+            plt.plot(err[under_thr_range], proportion[under_thr_range],
+                     label=method + ', auc={:1.3f}'.format(cur_auc),
+                     linestyle=line_styles[method_idx % len(line_styles)], linewidth=2.0)
 
-        plt.plot(err[under_thr_range], proportion[under_thr_range],
-                 label=method_name + ', auc={:1.3f}'.format(cur_auc),
-                 linestyle=line_styles[method_idx % len(line_styles)], linewidth=2.0)
     plt.legend(loc='right', prop={'size': 24})
     plt.savefig(args.output_path)
 
